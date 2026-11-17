@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { MongoClient } from "mongodb";
 
-type Badge = { name: string; badge: string; pending: boolean };
+type Badge = { name: string; badge: string; rarity?: number; pending: boolean };
 
 // biome-ignore lint/style/noNonNullAssertion: GitHub Actions
 const mongo = new MongoClient(process.env.MONGODB_URI!);
@@ -15,15 +15,15 @@ const filteredUsers = usersCollection.aggregate([
 	// Blocked Users
 	{
 		$match: { blocked: { $ne: true } },
-  },
-  // Cache badge count (inclusive of pending)
-  {
-          $set: {
-              originalBadgeCount: {
-                  $size: { $ifNull: ["$badges", []] },
-              },
-          },
-      },
+	},
+	// Cache badge count (inclusive of pending)
+	{
+		$set: {
+			originalBadgeCount: {
+				$size: { $ifNull: ["$badges", []] },
+			},
+		},
+	},
 	// Remove internal _id elements
 	{
 		$project: {
@@ -57,7 +57,7 @@ for await (const user of filteredUsers) {
 	if (user.badges && user.badges.length > 0) {
 		writeFileSync(`./User/${user.userId}.json`, JSON.stringify(user));
 		singleFile[user.userId] = user.badges;
-	} else if(user.originalBadgeCount===0){
+	} else if (user.originalBadgeCount === 0) {
 		usersToDrop.push(user.userId);
 	}
 }
